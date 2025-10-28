@@ -1,0 +1,21 @@
+pipeline{
+	agents any
+	stages{
+		stage('build'){
+			steps{
+				echo 'building the pipeline'
+				echo 'spring boot flight search'
+				}
+			}
+		stage('test'){
+			steps{
+				echo 'Testing flight search'
+				}
+			}
+		stage('run'){
+			steps{
+				echo 'running flight search'
+				}
+			}
+		}
+}

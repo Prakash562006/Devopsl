@@ -1,5 +1,3 @@
-package flightsearch;
-import java.lang.reflect.Array;
 import java.util.*;
 public class flightsearch {
 

@@ -1,46 +1,54 @@
 pipeline {
     agent any
-    options { timestamps() }
     stages {
-        stage('Prepare') {
-            steps {
-                echo 'Checking workspace and listing files'
-                sh 'ls -la'
-            }
+        stage('Checkout') {
+            steps { checkout scm }
         }
-        stage('Build') {
+        stage('Compile & Run') {
             steps {
                 script {
-                    // Prefer Maven if a pom.xml exists
-                    if (fileExists('pom.xml')) {
-                        echo 'Using Maven to build'
-                        sh 'mvn -B -DskipTests clean package'
+                    if (isUnix()) {
+                        sh '''
+                        mkdir -p out
+                        javac -d out flightsearch.java
+                        printf "402\n" | java -cp out flightsearch
+                        '''
                     } else {
-                        echo 'Compiling with javac'
-                        sh 'javac -d out $(find . -name "*.java")'
+                        bat '''
+                        if not exist out mkdir out
+                        javac -d out flightsearch.java
+                        echo 402 | java -cp out flightsearch
+                        '''
                     }
                 }
             }
         }
-        stage('Run') {
+        stage('Frontend') {
             steps {
-                // Run the main class; provide a sample input
-                echo 'Running flightsearch with sample input'
-                sh 'printf "402\n" | java -cp out flightsearch'
-            }
-        }
-        stage('Archive') {
-            steps {
-                archiveArtifacts artifacts: 'out/**', fingerprint: true
+                script {
+                    // If a static frontend exists, copy it to out/static and archive it as an artifact
+                    if (fileExists('src/main/resources/static/index.html')) {
+                        if (isUnix()) {
+                            sh '''
+                            mkdir -p out/static
+                            cp src/main/resources/static/index.html out/static/index.html
+                            ls -la out/static || true
+                            '''
+                        } else {
+                            bat '''
+                            if not exist out\static mkdir out\static
+                            copy /Y src\\main\\resources\\static\\index.html out\\static\\index.html
+                            dir out\\static || echo no-frontend
+                            '''
+                        }
+                    } else {
+                        echo 'No frontend static file found at src/main/resources/static/index.html'
+                    }
+                }
             }
         }
     }
     post {
-        always {
-            echo 'Pipeline finished'
-        }
-        failure {
-            mail to: 'devops@example.com', subject: "Build failed: ${env.JOB_NAME} #${env.BUILD_NUMBER}", body: "See Jenkins console output"
-        }
+        always { echo 'Pipeline finished' }
     }
 }
